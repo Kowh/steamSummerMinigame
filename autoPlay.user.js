@@ -33,7 +33,7 @@ var removeAllText = getPreferenceBoolean("removeAllText", false);
 var enableAutoRefresh = getPreferenceBoolean("enableAutoRefresh", typeof GM_info !== "undefined");
 var enableFingering = getPreferenceBoolean("enableFingering", true);
 var disableRenderer = getPreferenceBoolean("disableRenderer", false);
-var enableAutoUpdate = getPreferenceBoolean("enableAutoUpdate", true);
+var enableAutoUpdate = false;
 
 var enableElementLock = getPreferenceBoolean("enableElementLock", true);
 
@@ -59,10 +59,6 @@ var control = {
 	minsLeft: 30,
 	allowWormholeLevel: 25000
 };
-
-var remoteControlURL = "http://steamcommunity.com/groups/MSG2015/discussions/0/598198356173574660";
-var remoteControlURL2 = "http://steamcommunity.com/groups/MSG2015/discussions/0/598198356175571067";
-var showedUpdateInfo = getPreferenceBoolean("showedUpdateInfo", false);
 
 var UPGRADES = {
 	LIGHT_ARMOR: 0,
@@ -144,12 +140,6 @@ function firstRun() {
 	trt_oldCrit = s().DoCritEffect;
 	trt_oldPush = s().m_rgClickNumbers.push;
 	trt_oldRender = w.g_Minigame.Render;
-
-	updateControlData();
-
-	w.controlUpdateTimer = w.setInterval(function() {
-		updateControlData();
-	}, control.timePerUpdate);
 
 	if (enableElementLock) {
 		lockElements();
@@ -1430,85 +1420,6 @@ w.SteamDB_Minigame_Timer = w.setInterval(function() {
         w.SteamDB_Minigame_Timer = w.setInterval(MainLoop, 1000);
     }
 }, 1000);
-
-function updateControlData() {
-	console.log("Updating script control data");
-	var xhr = new XMLHttpRequest();
-	xhr.onload = function() {
-		if (xhr.readyState === 4) {
-			if (xhr.status === 200) {
-				try {
-					var post = xhr.responseXML.querySelectorAll("div.content")[1];
-					if (!post) {
-						console.error("Failed to load for some reason... debug DOM output:");
-						console.error(xhr.responseXML);
-						return;
-					}
-					var data = JSON.parse(post.innerText);
-					console.log(data);
-					w.$J.each(data, function(k, v) {
-						control[k] = v;
-					});
-				} catch (e) {
-					console.error(e);
-				}
-			} else {
-				console.error(xhr.statusText);
-			}
-		}
-	};
-	xhr.onerror = function(e) {
-		console.error(xhr.statusText);
-	};
-	xhr.open("GET", remoteControlURL, true);
-	xhr.responseType = "document";
-	xhr.send(null);
-
-	if (enableAutoUpdate) {
-		updateCode();
-	}
-}
-
-function updateCode() {
-	console.log("Updating script control code");
-	var xhr = new XMLHttpRequest();
-	xhr.onload = function() {
-		if (xhr.readyState === 4) {
-			if (xhr.status === 200) {
-				try {
-					var post = xhr.responseXML.querySelectorAll("div.content")[1];
-					if (!post) {
-						console.error("Failed to load for some reason... debug DOM output:");
-						console.error(xhr.responseXML);
-						return;
-					}
-					var data = post.innerText;
-					console.log(data);
-					/*jslint evil: true */
-					eval(data);
-				} catch (e) {
-					console.error(e);
-				}
-			} else {
-				console.error(xhr.statusText);
-			}
-		}
-	};
-	xhr.onerror = function(e) {
-		console.error(xhr.statusText);
-	};
-	xhr.open("GET", remoteControlURL2, true);
-	xhr.responseType = "document";
-	xhr.send(null);
-}
-
-// reload page if game isn't fully loaded, regardless of autoRefresh setting
-w.setTimeout(function() {
-	// m_rgGameData is 'undefined' if stuck at 97/97 or below
-	if (!w.g_Minigame || !w.g_Minigame.m_CurrentScene || !w.g_Minigame.m_CurrentScene.m_rgGameData) {
-		w.location.reload(true);
-	}
-}, autoRefreshSecondsCheckLoadedDelay * 1000);
 
 // Append gameid to breadcrumbs
 var breadcrumbs = document.querySelector('.breadcrumbs');
