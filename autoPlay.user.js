@@ -184,7 +184,7 @@ function firstRun() {
 	}
 
 	if (removeInterface) {
-		var node = document.getElementById("global_header");
+		node = document.getElementById("global_header");
 		if (node && node.parentNode) {
 			node.parentNode.removeChild(node);
 		}
@@ -358,7 +358,7 @@ function MainLoop() {
 		useTacticalNukeIfRelevant();
 		useCrippleMonsterIfRelevant();
 		useCrippleSpawnerIfRelevant();
-		if (level < control.speedThreshold || level % control.rainingRounds == 0) {
+		if (level < control.speedThreshold || level % control.rainingRounds === 0) {
 			useGoldRainIfRelevant();
 		}
 		useCrippleMonsterIfRelevant(level);
@@ -622,7 +622,7 @@ function toggleRenderer(event) {
 	}
 
 	if (value) {
-		w.g_Minigame.Renderer.render = function() {}
+		w.g_Minigame.Renderer.render = function() {};
 	} else {
 		w.g_Minigame.Renderer.render = trt_oldRender;
 	}
@@ -958,7 +958,7 @@ function goToLaneWithBestTarget() {
 
 		// Prevent attack abilities and items if up against a boss or treasure minion
 		var level = getGameLevel();
-		if (targetIsTreasure || (targetIsBoss && (level < control.speedThreshold || level % control.rainingRounds == 0))) {
+		if (targetIsTreasure || (targetIsBoss && (level < control.speedThreshold || level % control.rainingRounds === 0))) {
 			BOSS_DISABLED_ABILITIES.forEach(disableAbility);
 		} else {
 			BOSS_DISABLED_ABILITIES.forEach(enableAbility);
@@ -1034,7 +1034,7 @@ function useClusterBombIfRelevant() {
 			var enemy = s().GetEnemy(currentLane, i);
 			if (enemy) {
 				enemyCount++;
-				if (enemy.m_data.type === 0 || (level > control.speedThreshold && level % control.rainingRounds != 0 && level % 10 == 0)) {
+				if (enemy.m_data.type === 0 || (level > control.speedThreshold && level % control.rainingRounds !== 0 && level % 10 == 0)) {
 					enemySpawnerExists = true;
 				}
 			}
@@ -1062,7 +1062,7 @@ function useNapalmIfRelevant() {
 		var enemy = s().GetEnemy(currentLane, i);
 		if (enemy) {
 			enemyCount++;
-			if (enemy.m_data.type === 0 || (level > control.speedThreshold && level % control.rainingRounds != 0 && level % 10 == 0)) {
+			if (enemy.m_data.type === 0 || (level > control.speedThreshold && level % control.rainingRounds !== 0 && level % 10 == 0)) {
 				enemySpawnerExists = true;
 			}
 		}
@@ -1107,7 +1107,7 @@ function useTacticalNukeIfRelevant() {
 	for (var i = 0; i < 4; i++) {
 		var enemy = s().GetEnemy(currentLane, i);
 		if (enemy) {
-			if (enemy.m_data.type === 0 || (level > control.speedThreshold && level % control.rainingRounds != 0 && level % 10 == 0)) {
+			if (enemy.m_data.type === 0 || (level > control.speedThreshold && level % control.rainingRounds !== 0 && level % 10 == 0)) {
 				enemySpawnerExists = true;
 				enemySpawnerHealthPercent = enemy.m_flDisplayedHP / enemy.m_data.max_hp;
 			}
