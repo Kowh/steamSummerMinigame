@@ -2,7 +2,7 @@
 // @name /u/wchill Monster Minigame Auto-script w/ auto-click
 // @namespace https://github.com/wchill/steamSummerMinigame
 // @description A script that runs the Steam Monster Minigame for you.
-// @version 4.2.1
+// @version 4.2.2
 // @match *://steamcommunity.com/minigame/towerattack*
 // @match *://steamcommunity.com//minigame/towerattack*
 // @grant none
@@ -16,7 +16,7 @@
 "use strict";
 
 //Version displayed to client, update along with the @version above
-var SCRIPT_VERSION = '4.2.1';
+var SCRIPT_VERSION = '4.2.2';
 
 // OPTIONS
 var clickRate = 20;
@@ -33,7 +33,6 @@ var removeAllText = getPreferenceBoolean("removeAllText", false);
 var enableAutoRefresh = getPreferenceBoolean("enableAutoRefresh", typeof GM_info !== "undefined");
 var enableFingering = getPreferenceBoolean("enableFingering", true);
 var disableRenderer = getPreferenceBoolean("disableRenderer", false);
-var enableAutoUpdate = false;
 
 var enableElementLock = getPreferenceBoolean("enableElementLock", true);
 
@@ -275,7 +274,6 @@ function firstRun() {
 	options1.appendChild(makeCheckBox("removeGoldText", "Remove gold text", removeGoldText, handleEvent, false));
 	options1.appendChild(makeCheckBox("removeAllText", "Remove all text", removeAllText, toggleAllText, false));
 	options1.appendChild(makeCheckBox("disableRenderer", "Throttle game renderer", disableRenderer, toggleRenderer, true));
-	options1.appendChild(makeCheckBox("enableAutoUpdate", "Enable script auto update", enableAutoUpdate, toggleAutoUpdate, false));
 
 	if (typeof GM_info !== "undefined") {
 		options1.appendChild(makeCheckBox("enableAutoRefresh", "Enable auto-refresh", enableAutoRefresh, toggleAutoRefresh, false));
@@ -604,17 +602,6 @@ function toggleAutoClicker(event) {
 		currentClickRate = clickRate;
 	} else {
 		currentClickRate = 0;
-	}
-}
-
-function toggleAutoUpdate(event) {
-	var value = enableAutoUpdate;
-	if (event !== undefined) {
-		value = handleCheckBox(event);
-	}
-	if (value && !showedUpdateInfo) {
-		alert("PLEASE NOTE: This release has auto update functionality enabled by default. This does " + "come with a security implications and while you should be okay, it's still important " + "that you know about it. If you wish to disable it, simply uncheck the checkbox in options. " + "If you have questions, please contact /u/wchill.");
-		setPreference("showedUpdateInfo", true);
 	}
 }
 
