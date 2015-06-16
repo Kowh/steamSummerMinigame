@@ -2,7 +2,7 @@
 // @name /u/wchill Monster Minigame Auto-script w/ auto-click
 // @namespace https://github.com/wchill/steamSummerMinigame
 // @description A script that runs the Steam Monster Minigame for you.
-// @version 4.1.2
+// @version 4.2.1
 // @match *://steamcommunity.com/minigame/towerattack*
 // @match *://steamcommunity.com//minigame/towerattack*
 // @grant none
@@ -16,7 +16,7 @@
 "use strict";
 
 //Version displayed to client, update along with the @version above
-var SCRIPT_VERSION = '4.1.2';
+var SCRIPT_VERSION = '4.2.1';
 
 // OPTIONS
 var clickRate = 20;
@@ -57,8 +57,15 @@ var control = {
 	timePerUpdate: 60000,
 	useSlowMode: false,
 	minsLeft: 30,
-	allowWormholeLevel: 25000
+	allowWormholeLevel: 25000,
+	githubVersion: SCRIPT_VERSION,
+	useAbilityChance: 0.10,
+	useGoldThreshold: 200
 };
+
+var showedUpdateInfo = getPreferenceBoolean("showedUpdateInfo", false);
+
+var lane_info = {};
 
 var UPGRADES = {
 	LIGHT_ARMOR: 0,
@@ -213,7 +220,7 @@ function firstRun() {
 	// Easter egg button
 	var egg = document.createElement("span");
 	egg.className = "toggle_music_btn";
-	egg.innerText = "Easter Egg";
+	egg.textContent = "Easter Egg";
 	egg.onclick = function() {
 		w.SmackTV();
 	};
@@ -230,7 +237,12 @@ function firstRun() {
 	var activity = document.getElementById("activitylog");
 	activity.style.marginTop = "33px";
 
-	var options_box = document.querySelector(".leave_game_helper");
+	var newDiv = document.createElement("div");
+	document.getElementsByClassName('pagecontent')[0].insertBefore(newDiv, document.getElementsByClassName('footer_spacer')[0]);
+	newDiv.className = "options_box";
+
+	var options_box = document.querySelector(".options_box");
+
 	if(!options_box) {
 		options_box = document.querySelector(".options_box");
 	}
@@ -240,18 +252,20 @@ function firstRun() {
 	options_box.className = "options_box";
 	options_box.style.backgroundColor = "#000000";
 	options_box.style.width = "600px";
-	options_box.style.top = "73px";
+	options_box.style.marginTop = "12px";
 	options_box.style.padding = "12px";
-	options_box.style.position = "absolute";
 	options_box.style.boxShadow = "2px 2px 0 rgba( 0, 0, 0, 0.6 )";
 	options_box.style.color = "#ededed";
+	options_box.style.marginLeft = "auto";
+	options_box.style.marginRight = "auto";
+
+	var info_box = options_box.cloneNode(true);
 
 	var options1 = document.createElement("div");
 	options1.style["-moz-column-count"] = 3;
 	options1.style["-webkit-column-count"] = 3;
 	options1.style["column-count"] = 3;
 	options1.style.width = "100%";
-	options1.style.float = "left";
 
 	options1.appendChild(makeCheckBox("enableAutoClicker", "Enable autoclicker", enableAutoClicker, toggleAutoClicker, false));
 	options1.appendChild(makeCheckBox("removeInterface", "Remove interface", removeInterface, handleEvent, true));
@@ -260,18 +274,35 @@ function firstRun() {
 	options1.appendChild(makeCheckBox("removeCritText", "Remove crit text", removeCritText, toggleCritText, false));
 	options1.appendChild(makeCheckBox("removeGoldText", "Remove gold text", removeGoldText, handleEvent, false));
 	options1.appendChild(makeCheckBox("removeAllText", "Remove all text", removeAllText, toggleAllText, false));
-	options1.appendChild(makeCheckBox("disableRenderer", "Throttle game renderer", disableRenderer, toggleRenderer, false));
+	options1.appendChild(makeCheckBox("disableRenderer", "Throttle game renderer", disableRenderer, toggleRenderer, true));
 	options1.appendChild(makeCheckBox("enableAutoUpdate", "Enable script auto update", enableAutoUpdate, toggleAutoUpdate, false));
-	options_box.appendChild(options1);
 
 	if (typeof GM_info !== "undefined") {
-		options1.appendChild(makeCheckBox("enableAutoRefresh", "Enable auto-refresh (mitigate memory leak)", enableAutoRefresh, toggleAutoRefresh, false));
+		options1.appendChild(makeCheckBox("enableAutoRefresh", "Enable auto-refresh", enableAutoRefresh, toggleAutoRefresh, false));
 	}
 
 	options1.appendChild(makeCheckBox("enableFingering", "Enable targeting pointer", enableFingering, handleEvent, true));
 	options1.appendChild(makeNumber("setLogLevel", "Change the log level", "25px", logLevel, 0, 5, updateLogLevel));
 
 	options_box.appendChild(options1);
+
+	info_box.innerHTML = "<b>GAME INFO</b><br/>";
+	info_box.className = "info_box";
+	info_box.style.right = "0px";
+	lane_info = document.createElement("div");
+	lane_info.style["-moz-column-count"] = 3;
+	lane_info.style["-webkit-column-count"] = 3;
+	lane_info.style["column-count"] = 3;
+
+	lane_info.appendChild(document.createElement("div"));
+	lane_info.appendChild(document.createElement("div"));
+	lane_info.appendChild(document.createElement("div"));
+
+	info_box.appendChild(lane_info);
+	options_box.parentElement.appendChild(info_box);
+
+	var leave_game_box = document.querySelector(".leave_game_helper");
+	leave_game_box.parentElement.removeChild(leave_game_box);
 
 	//Elemental upgrades lock
 	var ab_box = document.getElementById("abilities");
@@ -291,6 +322,27 @@ function firstRun() {
 	ab_box.appendChild(lock_elements_box);
 
 	enhanceTooltips();
+}
+
+function updateLaneData() {
+    var element_names = {1:":shelterwildfire:", 2:":waterrune:", 3:":Wisp:", 4:":FateTree:"};
+    for(var i = 0; i < 3; i++) {
+        var element = s().m_rgGameData.lanes[i].element;
+        var abilities = s().m_rgLaneData[i].abilities;
+        if(!abilities) {
+            abilities = {};
+        }
+        var enemies = [];
+        for (var j = 0; j < 4; j++) {
+            var enemy = s().GetEnemy(i, j);
+            if (enemy) {
+                enemies.push(enemy);
+            }
+        }
+        var players = s().m_rgLaneData[i].players;
+        var output = "Lane " + (i+1) + " - <img src=\"http://cdn.steamcommunity.com/economy/emoticon/" + element_names[element] + "\"><br>" + players + " players";
+        lane_info.children[i].innerHTML = output;
+    }
 }
 
 function fixActiveCapacityUI() {
@@ -334,6 +386,8 @@ function MainLoop() {
 			return;
 		}
 
+		updateLaneData();
+
 		attemptRespawn();
 		goToLaneWithBestTarget();
 		useCooldownIfRelevant();
@@ -346,7 +400,7 @@ function MainLoop() {
 		useTacticalNukeIfRelevant();
 		useCrippleMonsterIfRelevant();
 		useCrippleSpawnerIfRelevant();
-		if (level < control.speedThreshold || level % control.rainingRounds === 0) {
+		if (level < control.speedThreshold || level % control.rainingRounds === 0 && level > control.useGoldThreshold) {
 			useGoldRainIfRelevant();
 		}
 		useCrippleMonsterIfRelevant(level);
@@ -372,14 +426,13 @@ function MainLoop() {
 
 		advLog("Ticked. Current clicks per second: " + currentClickRate + ". Current damage per second: " + (damagePerClick * currentClickRate), 4);
 
-		/*
 		if(disableRenderer) {
 		  s().Tick();
 
 		  requestAnimationFrame(function() {
 		    w.g_Minigame.Renderer.render(s().m_Container);
 		  });
-		}*/
+		}
 
 		isAlreadyRunning = false;
 
@@ -504,7 +557,6 @@ function makeCheckBox(name, desc, state, listener, reqRefresh) {
 	}
 	label.appendChild(document.createElement("br"));
 	return label;
-
 }
 
 function handleEvent(event) {
@@ -578,7 +630,6 @@ function toggleAutoRefresh(event) {
 	}
 }
 
-/*
 function toggleRenderer(event) {
 	var value = disableRenderer;
 
@@ -599,20 +650,6 @@ function toggleRenderer(event) {
 		ticker.stop();
 
 		w.g_Minigame.Render = function() {};
-	}
-}
-*/
-
-function toggleRenderer(event) {
-	var value = disableRenderer;
-	if (event !== undefined) {
-		value = handleCheckBox(event);
-	}
-
-	if (value) {
-		w.g_Minigame.Renderer.render = function() {};
-	} else {
-		w.g_Minigame.Renderer.render = trt_oldRender;
 	}
 }
 
@@ -960,7 +997,7 @@ function goToLaneWithBestTarget() {
 }
 
 function useCooldownIfRelevant() {
-	if (getActiveAbilityLaneCount(ABILITIES.DECREASE_COOLDOWNS) > 0) {
+	if (getActiveAbilityLaneCount(ABILITIES.DECREASE_COOLDOWNS) > 0 || Math.random() > control.useAbilityChance) {
 		disableAbility(ABILITIES.DECREASE_COOLDOWNS);
 		return;
 	}
@@ -1010,33 +1047,34 @@ function useGoodLuckCharmIfRelevant() {
 
 function useClusterBombIfRelevant() {
 	//Check if Cluster Bomb is purchased and cooled down
-	if (canUseAbility(ABILITIES.CLUSTER_BOMB)) {
+	if (!canUseAbility(ABILITIES.CLUSTER_BOMB) || Math.random() > control.useAbilityChance) {
+		return;
+	}
 
-		//Check lane has monsters to explode
-		var currentLane = s().m_nExpectedLane;
-		var enemyCount = 0;
-		var enemySpawnerExists = false;
-		var level = getGameLevel();
-		//Count each slot in lane
-		for (var i = 0; i < 4; i++) {
-			var enemy = s().GetEnemy(currentLane, i);
-			if (enemy) {
-				enemyCount++;
-				if (enemy.m_data.type === 0 || (level > control.speedThreshold && level % control.rainingRounds !== 0 && level % 10 === 0)) {
-					enemySpawnerExists = true;
-				}
+	//Check lane has monsters to explode
+	var currentLane = s().m_nExpectedLane;
+	var enemyCount = 0;
+	var enemySpawnerExists = false;
+	var level = getGameLevel();
+	//Count each slot in lane
+	for (var i = 0; i < 4; i++) {
+		var enemy = s().GetEnemy(currentLane, i);
+		if (enemy) {
+			enemyCount++;
+			if (enemy.m_data.type === 0 || (level > control.speedThreshold && level % control.rainingRounds !== 0 && level % 10 === 0)) {
+				enemySpawnerExists = true;
 			}
 		}
-		//Bombs away if spawner and 2+ other monsters
-		if (enemySpawnerExists && enemyCount >= 3) {
-			triggerAbility(ABILITIES.CLUSTER_BOMB);
-		}
+	}
+	//Bombs away if spawner and 2+ other monsters
+	if (enemySpawnerExists && enemyCount >= 3) {
+		triggerAbility(ABILITIES.CLUSTER_BOMB);
 	}
 }
 
 function useNapalmIfRelevant() {
 	//Check if Napalm is purchased and cooled down
-	if (!canUseAbility(ABILITIES.NAPALM)) {
+	if (!canUseAbility(ABILITIES.NAPALM) || Math.random() > control.useAbilityChance) {
 		return;
 	}
 
@@ -1064,7 +1102,7 @@ function useNapalmIfRelevant() {
 // Use Moral Booster if doable
 function useMoraleBoosterIfRelevant() {
 	// check if Good Luck Charms is purchased and cooled down
-	if (!canUseAbility(ABILITIES.MORALE_BOOSTER)) {
+	if (!canUseAbility(ABILITIES.MORALE_BOOSTER) || Math.random() > control.useAbilityChance) {
 		return;
 	}
 	var numberOfWorthwhileEnemies = 0;
@@ -1083,7 +1121,7 @@ function useMoraleBoosterIfRelevant() {
 
 function useTacticalNukeIfRelevant() {
 	// Check if Tactical Nuke is purchased
-	if (!canUseAbility(ABILITIES.TACTICAL_NUKE)) {
+	if (!canUseAbility(ABILITIES.TACTICAL_NUKE) || Math.random() > control.useAbilityChance) {
 		return;
 	}
 
@@ -1112,18 +1150,19 @@ function useTacticalNukeIfRelevant() {
 
 function useCrippleMonsterIfRelevant() {
 	// Check if Cripple Monster is available
-	if (canUseItem(ABILITIES.CRIPPLE_MONSTER)) {
+	if (!canUseItem(ABILITIES.CRIPPLE_MONSTER) || Math.random() > control.useAbilityChance) {
+		return;
+	}
 
-		var level = getGameLevel();
-		// Use nukes on boss when level >3000 for faster kills
-		if (level > control.speedThreshold && level % control.rainingRounds !== 0 && level % 10 === 0) {
-			var enemy = s().GetEnemy(s().m_rgPlayerData.current_lane, s().m_rgPlayerData.target);
-			if (enemy && enemy.m_data.type == ENEMY_TYPE.BOSS) {
-				var enemyBossHealthPercent = enemy.m_flDisplayedHP / enemy.m_data.max_hp;
-				if (enemyBossHealthPercent > 0.5) {
-					advLog("Cripple Monster available and used on boss", 2);
-					triggerItem(ABILITIES.CRIPPLE_MONSTER);
-				}
+	var level = getGameLevel();
+	// Use nukes on boss when level >3000 for faster kills
+	if (level > control.speedThreshold && level % control.rainingRounds !== 0 && level % 10 === 0) {
+		var enemy = s().GetEnemy(s().m_rgPlayerData.current_lane, s().m_rgPlayerData.target);
+		if (enemy && enemy.m_data.type == ENEMY_TYPE.BOSS) {
+			var enemyBossHealthPercent = enemy.m_flDisplayedHP / enemy.m_data.max_hp;
+			if (enemyBossHealthPercent > 0.5) {
+				advLog("Cripple Monster available and used on boss", 2);
+				triggerItem(ABILITIES.CRIPPLE_MONSTER);
 			}
 		}
 	}
@@ -1131,7 +1170,7 @@ function useCrippleMonsterIfRelevant() {
 
 function useCrippleSpawnerIfRelevant() {
 	// Check if Cripple Spawner is available
-	if (!canUseItem(ABILITIES.CRIPPLE_SPAWNER)) {
+	if (!canUseItem(ABILITIES.CRIPPLE_SPAWNER) || Math.random() > control.useAbilityChance) {
 		return;
 	}
 
@@ -1178,11 +1217,11 @@ function useGoldRainIfRelevant() {
 
 function useMetalDetectorIfRelevant() {
 	// Early game treasures
-	if (getGameLevel() <= 30 && canUseAbility(ABILITIES.TREASURE)) {
-		triggerAbility(ABILITIES.TREASURE);
+	if (getGameLevel() <= 30 && canUseItem(ABILITIES.TREASURE)) {
+		triggerItem(ABILITIES.TREASURE);
 	}
 	// Check if metal detector or treasure is purchased
-	if (canUseAbility(ABILITIES.METAL_DETECTOR) || canUseAbility(ABILITIES.TREASURE)) {
+	if (canUseAbility(ABILITIES.METAL_DETECTOR) || canUseItem(ABILITIES.TREASURE)) {
 		if (isAbilityActive(ABILITIES.METAL_DETECTOR)) {
 			return;
 		}
@@ -1197,9 +1236,9 @@ function useMetalDetectorIfRelevant() {
 				if (canUseAbility(ABILITIES.METAL_DETECTOR)) {
 					advLog('Metal Detector is purchased and cooled down, Triggering it on boss', 2);
 					triggerAbility(ABILITIES.METAL_DETECTOR);
-				} else if (canUseAbility(ABILITIES.TREASURE)) {
+				} else if (canUseItem(ABILITIES.TREASURE)) {
 					advLog('Treasure is available and cooled down, Triggering it on boss', 2);
-					triggerAbility(ABILITIES.TREASURE);
+					triggerItem(ABILITIES.TREASURE);
 				}
 			}
 		}
@@ -1209,7 +1248,7 @@ function useMetalDetectorIfRelevant() {
 
 function useMaxElementalDmgIfRelevant() {
 	// Check if Max Elemental Damage is purchased
-	if (isAbilityActive(ABILITIES.MAX_ELEMENTAL_DAMAGE)) {
+	if (isAbilityActive(ABILITIES.MAX_ELEMENTAL_DAMAGE) || Math.random() > control.useAbilityChance) {
 		return;
 	}
 	if (tryUsingItem(ABILITIES.MAX_ELEMENTAL_DAMAGE, true)) {
@@ -1232,7 +1271,7 @@ function useWormholeIfRelevant() {
 }
 
 function useReviveIfRelevant(level) {
-	if (level % 10 === 9 && tryUsingItem(ABILITIES.RESURRECTION)) {
+	if (level % 10 === 9 && tryUsingItem(ABILITIES.RESURRECTION) && Math.random() <= control.useAbilityChance) {
 		// Resurrect is purchased and we are using it.
 		advLog('Triggered Resurrect.');
 	}
@@ -1420,6 +1459,14 @@ w.SteamDB_Minigame_Timer = w.setInterval(function() {
         w.SteamDB_Minigame_Timer = w.setInterval(MainLoop, 1000);
     }
 }, 1000);
+
+// reload page if game isn't fully loaded, regardless of autoRefresh setting
+w.setTimeout(function() {
+	// m_rgGameData is 'undefined' if stuck at 97/97 or below
+	if (!w.g_Minigame || !w.g_Minigame.m_CurrentScene || !w.g_Minigame.m_CurrentScene.m_rgGameData) {
+		w.location.reload(true);
+	}
+}, autoRefreshSecondsCheckLoadedDelay * 1000);
 
 // Append gameid to breadcrumbs
 var breadcrumbs = document.querySelector('.breadcrumbs');
