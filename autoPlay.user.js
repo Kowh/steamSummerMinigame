@@ -1170,7 +1170,7 @@ function useCrippleMonsterIfRelevant() {
 
 function useCrippleSpawnerIfRelevant() {
 	// Check if Cripple Spawner is available
-	if (!canUseItem(ABILITIES.CRIPPLE_SPAWNER) || Math.random() > control.useAbilityChance) {
+	if ((!canUseItem(ABILITIES.CRIPPLE_SPAWNER) && !canUseItem(ABILITIES.CRIPPLE_MONSTER)) || Math.random() > control.useAbilityChance) {
 		return;
 	}
 
@@ -1192,7 +1192,11 @@ function useCrippleSpawnerIfRelevant() {
 	// If there is a spawner and it's health is above 95%, cripple it!
 	if (enemySpawnerExists && enemySpawnerHealthPercent > 0.95) {
 		advLog("Cripple Spawner available, and needed. Cripple 'em.", 2);
-		triggerItem(ABILITIES.CRIPPLE_SPAWNER);
+        if (canUseItem(ABILITIES.CRIPPLE_SPAWNER)) {
+            triggerItem(ABILITIES.CRIPPLE_SPAWNER);
+        } else {
+            triggerItem(ABILITIES.CRIPPLE_MONSTER);
+        }
 	}
 }
 
